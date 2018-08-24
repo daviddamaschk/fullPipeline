@@ -1,0 +1,37 @@
+#!/usr/bin/env groovy
+//noinspection GroovyAssignabilityCheck
+node {
+    def mvn_version = 'M3'
+    try {
+        stage("Build Project") {
+            withEnv(["PATH+MAVEN=${tool mvn_version}/bin"]) {
+                sh "mvn clean install -DskipTests"
+            }
+        }
+
+        stage("Run Tests") {
+            withEnv(["PATH+MAVEN=${tool mvn_version}/bin"]) {
+                sh "mvn test "
+            }
+
+        }
+
+        stage("Deploy") {
+            if (env.BRANCH_NAME == 'production') {
+                echo 'deploy.sh ...'
+            } else {
+                echo 'do not deploy'
+            }
+        }
+        currentBuild.result = 'SUCCESS'
+    }
+    catch (any) {
+        currentBuild.result = 'FAILURE'
+        step([$class                  : 'Mailer',
+              notifyEveryUnstableBuild: true,
+              recipients              : "david.damaschk@exxcellent.de",
+              sendToIndividuals       : true])
+    } finally {
+        deleteDir()
+    }
+}
